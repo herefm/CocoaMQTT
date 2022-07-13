@@ -317,7 +317,7 @@ public class CocoaMQTT: NSObject, CocoaMQTTClient {
         connect.cleansess = cleanSession
         
         send(connect)
-        reader!.start()
+        reader?.start()
     }
 
     fileprivate func nextMessageID() -> UInt16 {
@@ -560,17 +560,17 @@ extension CocoaMQTT: CocoaMQTTSocketDelegate {
     }
 
     public func socket(_ socket: CocoaMQTTSocketProtocol, didRead data: Data, withTag tag: Int) {
-        let etag = CocoaMQTTReadTag(rawValue: tag)!
+        guard let etag = CocoaMQTTReadTag(rawValue: tag) else { return }
         var bytes = [UInt8]([0])
         switch etag {
         case CocoaMQTTReadTag.header:
             data.copyBytes(to: &bytes, count: 1)
-            reader!.headerReady(bytes[0])
+            reader?.headerReady(bytes[0])
         case CocoaMQTTReadTag.length:
             data.copyBytes(to: &bytes, count: 1)
-            reader!.lengthReady(bytes[0])
+            reader?.lengthReady(bytes[0])
         case CocoaMQTTReadTag.payload:
-            reader!.payloadReady(data)
+            reader?.payloadReady(data)
         }
     }
 
@@ -613,9 +613,14 @@ extension CocoaMQTT: CocoaMQTTSocketDelegate {
 extension CocoaMQTT: CocoaMQTTReaderDelegate {
     
     func didReceive(_ reader: CocoaMQTTReader, connack: FrameConnAck) {
-        printDebug("RECV: \(connack)")
+        printDebug("RECV: \(connack) \(connack.returnCode?.description)")
 
-        if connack.returnCode == .accept {
+        guard let returnCode = connack.returnCode else {
+          printWarning("No returnCode for: \(connack)")
+          return
+        }
+
+        if returnCode == .accept {
             
             // Disable auto-reconnect
             
@@ -657,8 +662,8 @@ extension CocoaMQTT: CocoaMQTTReaderDelegate {
             internal_disconnect()
         }
 
-        delegate?.mqtt(self, didConnectAck: connack.returnCode!)
-        didConnectAck(self, connack.returnCode!)
+        delegate?.mqtt(self, didConnectAck: returnCode)
+        didConnectAck(self, returnCode)
     }
 
     func didReceive(_ reader: CocoaMQTTReader, publish: FramePublish) {
