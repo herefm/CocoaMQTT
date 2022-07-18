@@ -680,7 +680,12 @@ extension CocoaMQTT5: CocoaMQTTReaderDelegate {
     func didReceive(_ reader: CocoaMQTTReader, connack: FrameConnAck) {
         printDebug("RECV: \(connack)")
 
-        if connack.reasonCode == .success {
+        guard let reasonCode = connack.reasonCode else {
+            printWarning("No returnCode for: \(connack)")
+            return
+        }
+
+        if reasonCode == .success {
 
             // Disable auto-reconnect
 
@@ -723,8 +728,8 @@ extension CocoaMQTT5: CocoaMQTTReaderDelegate {
         }
 
 
-        delegate?.mqtt5(self, didConnectAck: connack.reasonCode!, connAckData: connack.connackProperties ?? nil)
-        didConnectAck(self, connack.reasonCode!, connack.connackProperties ?? nil)
+        delegate?.mqtt5(self, didConnectAck: reasonCode, connAckData: connack.connackProperties ?? nil)
+        didConnectAck(self, reasonCode, connack.connackProperties ?? nil)
     }
 
     func didReceive(_ reader: CocoaMQTTReader, publish: FramePublish) {
